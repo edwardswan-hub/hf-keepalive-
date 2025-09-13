@@ -1,4 +1,4 @@
-name: Keep HuggingFace Space Alive with Gmail Alert
+name: Keep HuggingFace Space Alive with Email + WeChat Alert
 
 on:
   schedule:
@@ -21,11 +21,12 @@ jobs:
             echo "status=fail" >> $GITHUB_OUTPUT
           fi
 
+      # 邮件提醒
       - name: Send Email if Failed
         if: steps.ping.outputs.status == 'fail'
         uses: dawidd6/action-send-mail@v3
         with:
-          server_address: smtp.gmail.com
+          server_address: smtp.office365.com   # 如果用 Gmail 改成 smtp.gmail.com
           server_port: 587
           secure: true
           username: ${{ secrets.MAIL_USER }}
@@ -35,3 +36,11 @@ jobs:
           from: ${{ secrets.MAIL_USER }}
           body: |
             警告：${{ secrets.SPACE_URL }} 保活检测失败，请立即检查 Space 状态。
+
+      # 微信提醒
+      - name: Send WeChat Alert if Failed
+        if: steps.ping.outputs.status == 'fail'
+        run: |
+          curl -s "https://sctapi.ftqq.com/${{ secrets.SERVERCHAN_KEY }}.send" \
+          -d "title=🚨 Hugging Face Space 保活失败" \
+          -d "desp=检测到 ${{ secrets.SPACE_URL }} 保活失败，请立即检查。"
