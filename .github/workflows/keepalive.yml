@@ -1,9 +1,9 @@
-name: Keep HuggingFace Space Alive
+name: Keep HuggingFace Space Alive with Gmail Alert
 
 on:
   schedule:
     - cron: "*/10 * * * *"  # 每10分钟运行一次
-  workflow_dispatch:        # 允许手动触发
+  workflow_dispatch:
 
 jobs:
   ping:
@@ -11,5 +11,27 @@ jobs:
     steps:
       - name: Mask URL in logs
         run: echo "::add-mask::${{ secrets.SPACE_URL }}"
+
       - name: Curl HuggingFace Space
-        run: curl -s "${{ secrets.SPACE_URL }}" > /dev/null
+        id: ping
+        run: |
+          if curl -s --fail "${{ secrets.SPACE_URL }}" > /dev/null; then
+            echo "status=ok" >> $GITHUB_OUTPUT
+          else
+            echo "status=fail" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Email if Failed
+        if: steps.ping.outputs.status == 'fail'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          secure: true
+          username: ${{ secrets.MAIL_USER }}
+          password: ${{ secrets.MAIL_PASS }}
+          subject: "🚨 Hugging Face Space 保活失败"
+          to: zqc@158844.onmicrosoft.com,zqc2911445418@outlook.com,swanedward77@gmail.com
+          from: ${{ secrets.MAIL_USER }}
+          body: |
+            警告：${{ secrets.SPACE_URL }} 保活检测失败，请立即检查 Space 状态。
